@@ -3,484 +3,242 @@
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 
 <style>
-html,
-body {
-  width: 100%;
-  height: 100%;
+html {
+  background: #FFF;
+  padding-top: 30px;
 }
 
-// PLAYER GLOBAL RULES
-.ytplayer {
+body {
+
+}
+
+#ypt_wrapper {
+  width: 100%;
+  background: #FFF;
+  //color: #000;
+  overflow: hidden;
+  max-width: 100%;
+  box-shadow: 0px 8px 13px rgba(0,0,0,0.5);
+  margin-bottom: 1em;
+}
+
+#ypt_thumbs {
+  overflow-y: scroll;
+  overflow-x: hidden;
+  width: 20%;
+  background: #000;
+  margin: 0;
+  padding: 0;
+  height: 0;
+}
+
+#ypt_thumbs li {
+  list-style: none;
+  margin: 0;
   position: relative;
+  font-size: 0;
+}
+
+#ypt_thumbs li img{
+  width: 100%;
+}
+
+#ypt_thumbs li p {
+  font-family: arial;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  padding: 5%;
+  margin: 0;
+}
+
+#ypt_thumbs li:hover p {
+  display: block;
+  cursor: pointer;
+}
+
+#ypt_thumbs .ypt-now-playing p {
+  display: block;
+}
+
+#ypt_thumbs .ypt-now-playing > span::after {
+  content: "\25b6  Now playing"; /* A traingle pointing right */
+  margin-top: -1em;
+  display: block;
+  width: 100%;
+  padding: 5%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  position: absolute;
+  bottom: 0;
+  font-size: 10px;
+}
+
+#ypt_wrapper .video {
+  position: relative;
+  width: 80%;
+  /*height: 0;*/
+  padding-bottom: 48.4%;
+  float: left;
+}
+
+#ypt_wrapper .video iframe {
+  position: absolute;
   top: 0;
   left: 0;
-  overflow: hidden;
-  .ytplayer__iframe {
-    position: relative;
-    width: 100%;
-    height: 100%;
+  width: 100%;
+  height: 100%;
+  float:left;
+}
+
+@media only screen and (max-width : 400px) {
+  #ypt_thumbs {
+    display: none;
   }
-  // RULES FOR VIDEO ON PAUSE
-  &.on-pause {
-    &.ytplayer--complete {
-    }
-    &.ytplayer--simple {
-    }
-    .iframe {
-    }
-    .overlay {
-      .overlay__element--hide {
-      }
-      .overlay__carousel {
-        .overlay__element {
-        }
-      }
-    }
-    .controls {
-      .controls__btn {
-        &.controls__btn--play {
-        }
-        &.controls__btn--overlay {
-        }
-      }
-    }
-  }
-  // RULES FOR OVERLAY ON
-  &.on-overlay {
-    .overlay {
-      display: block;
-      .overlay__element--hide {
-        background-color: rgba(0, 0, 0, 0.5);
-        opacity: 1;
-      }
-      .overlay__carousel {
-        transform: translate3d(0, 0%, 0);
-      }
-    }
-  // changing single player rules
-  &.ytplayer--complete {
-    height: 100%;
+  #ypt_wrapper .video {
     width: 100%;
+    padding-bottom: 56.25%;
   }
 }
 </style>
-<div class="ytplayer ytplayer--complete">
-	<!--data video also accepts a single video-id that is not in the playlist (and there will not be in overlay), anyway if you only need a playlist delete data-video-->
-  <div id="video1" class="ytplayer__iframe" data-playlist ="PLSVAZsq7pCw8GcUgZin3wq2eImWWZFdME"></div>
-	
-  </div>
+<div id="ypt_wrapper">
+     <div class="video">
+      <div id="player" data-pl="PLSVAZsq7pCw8GcUgZin3wq2eImWWZFdME"></div>
+    </div>
+    <ul id="ypt_thumbs"></ul>
+</div>
+  
+<script>// Load Youtube IFrame Player API code asynchronously. This boat is going nowhere without it.
+var tag = document.createElement('script'); //Add a script tag
+tag.src = "https://www.youtube.com/iframe_api"; //Set the SRC to get the API
+var firstScriptTag = document.getElementsByTagName('script')[0]; //Find the first script tag in the html
+firstScriptTag.parentNode.insertBefore(tag, firstScriptTag); //Put this script tag before the first one
 
-<script>
-  var app = {
+var player; //The Youtube API player
+var ypt_player = document.getElementById('player');
+var playlistID = ypt_player.getAttribute('data-pl');
+var ypt_thumbs = document.getElementById('ypt_thumbs');
+var nowPlaying = "ypt-now-playing"; //For marking the current thumb
+var nowPlayingClass = "." + nowPlaying;
+var ypt_index = 0; //Playlists begin at the first video by default
 
-	// parameters for each player in page
-	playersParametersArray: [{
-		height: '1920',
-		width: '1080',
-		playerVars: {
-			wmode: 'opaque',
-			controls: 0, 					//hide native control
-			playsinline: 1,				// check if video plays on player mobile (IOS) and allows video play inline (android)
-			rel: 0,								// hide suggested videos at the video's end
-			showinfo: 0, 					//hide info - video name etc
-			autohide: 1,					//hide native controls only when video plays
-			fs: 1,								// remove native play btn in full screen 
-			iv_load_policy: 3, 		// hide video annotation
-			loop: 1,            	// play videos in loop - custom skip btn works in loop 
-			mute: 1,							// play videos with audio 
-			listType: 'playlist', // set playlist
-			autoplay: 1,       		// don't play video automatically 
-			cc_load_policy: 0, 		// show subtitle automatically
-			color : 'white',   		// set loading bar's color - white or red
-			disablekb : 0,    		//disable keyboard action on video
-			enablejsapi: 0,   		//enable javascript api
-			//start: 5 set after how many seconds video starts
-			//end: 5, set after how many seconds video stops
-			hl: 'it',      				//set player's language
-			modestbranding: 1, 		// reduce the yt logo's dimension
-			//playerapiid: see javascript api
-			//origin: see javascript api
-			theme: 'dark'         //set controls bar's color - dark or light
-		}
-	}, 
-	{
-		height: '1920',
-		width: '1080',
-		playerVars: {
-			wmode: 'opaque',
-			controls: 0, 					//hide native control permanently
-			playsinline: 1,				// check if video plays on an external player (IOS) and allows video play inline (android)
-			rel: 0,								// hide suggested videos at the video's end
-			showinfo: 0, 					//hide info - video name etc
-			autohide: 1,					//hide native controls only when video plays
-			fs: 1,								// in full screen hide native play btn  
-			iv_load_policy: 3, 		// hide video annotation
-			loop: 1,            	// play videos in loop - custom skip btn works in loop 
-			mute: 1,							// play videos with audio 
-			listType: 'playlist',	// set playlist
-			autoplay: 0,       		// disable autoplay
-			cc_load_policy: 0, 		// show subtitle automatically
-			color : 'white',   		// set the loading bar's color white or red
-			disablekb : 0,    		//disable keyboard action on video
-			enablejsapi: 0,   		//enable javascript api
-			//start: 5 set after how many seconds video starts
-			//end: 5, set after how many seconds video stops
-			hl: 'it',      				//set player's language
-			modestbranding: 1, 		// reduce the yt logo's dimension
-			//playerapiid: see javascript api
-			//origin: see javascript api
-			theme: 'dark'         //set controls bar's color dark or light
-		}
-	}],
-	ytPlayers: [],
-	iFrames: [],
-	onTouch: (('ontouchstart' in window) || (window.DocumentTouch && document instanceof DocumentTouch)) ? 'touchstart' : 'click',
-}
-
-// 2 - Called when iFrameAPI is inject in page
-
-function onYouTubeIframeAPIReady() {
-	if (typeof app.playersParametersArray === 'undefined')
-		return;
-	
-	// Rules for touch device
-	if(app.onTouch === 'touchstart'){
-		$('.ytplayer').addClass('on-touch');
-		$('.controls').css({'display': 'none'});
-		$('.controls__volume').css({'display': 'none'});
-	}
-
-	//Pushing data-video and data-playlist in array
-	var videoIdList = [];
-	var playlistIDs = [];
-	
-	// Grab video ID from each .iframe data-video attribute
-	$(".ytplayer__iframe").each(function() {
-		videoIdList.push($(this).attr("data-video"));
-	});
-	$(".ytplayer__iframe").each(function() {
-		playlistIDs.push($(this).attr("data-playlist"));
-	});
-
-	// obtain element's id - data-video - data-playlist 
-	for (var i = 0; i < videoIdList.length; i++) {
-		
-		var videoID = videoIdList[i] || playlistIDs[i];
-		var playlistID = playlistIDs[i];			
-		var playerID = $('[data-video=' + videoID + ']').attr('id') || $('[data-playlist=' + videoID + ']').attr('id');
-		var playerParameters = app.playersParametersArray[i];
-		
-		// init createPlayer
-		createPlayer(playerParameters, playerID, videoID, playlistID);
-	}
-}
-
-// 3 - Take playerParameter and apply to players in page
-
-function createPlayer(playerParameters, playerID, videoID, playlistID) {
-	
-	// set player's id in playerParameters
-	if(playlistID != null){
-		playerParameters.playerVars.playlist = '' + playlistID + '';
-		playerParameters.playerVars.list = '' + playlistID + '';
-		
-	}
-	else{
-		playerParameters.videoId = videoID;
-	}
-	
-	// init new YT player
-	var ytPlayer = new YT.Player(playerID, playerParameters);
-	
-	// app.players holds ref to all players in page
-	app.ytPlayers.push(ytPlayer);
-	
-	// init YT player listeners
-	ytPlayer.addEventListener('onReady', function(event) {
-		// init PlayerManager Object
-		YTManager = new PlayerManager(ytPlayer, videoID);
-	});
-	
-}
-
-var __bind = function(fn, me) {
-    return function() {
-      return fn.apply(me, arguments);
-    };
+function getPlaylistData(playlistID, video_list, page_token) { //Makes a single request to Youtube Data API
+  var apiKey = 'AIzaSyAE5ys6wCOxsBCqQ376izGfylErr9vZDBI';
+  var theUrl =
+  'https://www.googleapis.com/youtube/v3/playlistItems?part=snippet' +
+  '&maxResults='+ 50 + //Can be anything from 1-50
+  '&playlistId=' + playlistID +
+  '&key=' + apiKey
+  ;
+  if(page_token){ theUrl +=('&pageToken=' + page_token );} //If there is page token, start there
+  var xmlHttp = null;
+  xmlHttp = new XMLHttpRequest();
+  xmlHttp.open( "GET", theUrl, true);
+  xmlHttp.send( null );
+  xmlHttp.onload = function (e) { //when the request comes back
+    buildJSON(xmlHttp.responseText, video_list, playlistID); //send the data to buildJSON
   };
-
-// 4 - PLAYER MANAGER 
-
-function PlayerManager(ytPlayerRef, videoID) {
-	
-	this.ytPlayer = ytPlayerRef;
-	
-	//check id of player if it's a video or playlist - video id has 11 letters
-	if(videoID.length == 11){
-		var playerContainer = $('[data-video=' + videoID + ']').parent('.ytplayer');
-	}
-	else{
-		var playerContainer = $('[data-playlist=' + videoID + ']').parent('.ytplayer');
-	}
-	
-	this.playerContainer = playerContainer;
-	this.playButton = playerContainer.find('.controls__btn--play');
-	this.overlayButton = playerContainer.find('.controls__btn--overlay');
-	this.overlayWrap = playerContainer.find('.overlay');
-	this.overlayElements = playerContainer.find('.overlay__element');
-	this.skipButton = playerContainer.find('.controls__btn--skip');
-	this.playerState = YT.PlayerState.UNSTARTED;
-	this.volumeSlider = playerContainer.find('.controls__slider');
-	this.muteBtn = playerContainer.find('.controls__btn--mute');
-	this.overlayCarousel = playerContainer.find('.overlay__carousel');
-	this.carouselElements = this.overlayCarousel.find('.overlay__element');
-	
-	
-	var mngr = this;
-	this.ytPlayer.addEventListener('onStateChange', __bind(mngr.onPlayerStateChange, mngr));
-	
-	// Init buttons listener
-	this.listeners();
-	
-	//caching data-ypt-index of playlist
-	this.ytpIndex = [];
-	
-		this.carouselElements.each(function(){
-			mngr.ytpIndex.push($(this).attr("data-ytp-index"));
-		});
-
 }
 
-// 5 - LISTENERS
-
-PlayerManager.prototype.listeners = function() {
-	
-	var $playerManager = this;
-	
-	/*
-	
-		YT PLAYER STATE
-		
-		-1 – unstarted
-		0 – ended
-		1 – playing
-		2 – paused
-		3 – buffering
-		5 – video cued
-		
-		PLAYER'S CONTAINER STATE
-		
-		- ON-PLAY
-		- ON_PAUSE
-		- ON-OVERLAY
-	
-	*/
-	
-	// PLAY BTN (play/pause video)
-	this.playButton.on(app.onTouch, function(e) {
-		e.preventDefault();
-
-		// get the state of player
-		// check if player are on mute 
-		$playerManager.playerState = $playerManager.ytPlayer.getPlayerState();
-		var isMute = $playerManager.ytPlayer.isMuted();
-		
-		
-		if (
-			$playerManager.playerState == YT.PlayerState.UNSTARTED || 
-			$playerManager.playerState ==	YT.PlayerState.CUED || 
-			$playerManager.playerState == YT.PlayerState.PAUSED || 
-			$playerManager.playerState == YT.PlayerState.BUFFERING
-		) {
-			
-			$playerManager.ytPlayer.playVideo();
-			$playerManager.playerContainer.removeClass('on-pause on-overlay');
-			$playerManager.playerContainer.addClass('on-play');
-
-		} else if ($playerManager.playerState == YT.PlayerState.PLAYING) {
-				$playerManager.ytPlayer.pauseVideo();
-				$playerManager.playerContainer.removeClass('on-play');
-			
-			// if you want show overlay when player is on-pause add class on-overlay here
-				$playerManager.playerContainer.addClass('on-pause');
-				
-			}
-	});
-	
-	// OVERLAY BTN (show/hide playlist)
-	this.overlayButton.on(app.onTouch, function(e) {
-		e.preventDefault();
-
-		// get the state of player
-		// check if player are on mute 
-		var isMute = $playerManager.ytPlayer.isMuted();
-
-		$playerManager.playerState = $playerManager.ytPlayer.getPlayerState();
-		
-		if ($playerManager.playerContainer.hasClass('on-overlay')){
-			$playerManager.playerContainer.removeClass('on-overlay');
-		}
-		else{
-			
-		if (
-			$playerManager.playerState == YT.PlayerState.UNSTARTED || 
-			$playerManager.playerState ==	YT.PlayerState.CUED || 
-			$playerManager.playerState == YT.PlayerState.PAUSED || 
-			$playerManager.playerState == YT.PlayerState.BUFFERING
-		) {
-			$playerManager.playerContainer.addClass('on-overlay');
-
-		} else if ($playerManager.playerState == YT.PlayerState.PLAYING) {
-			
-				$playerManager.playerContainer.addClass('on-overlay');
-				
-			}
-		}
-	});
-	
-	// OVERLAY ELEMENTS (select video)
-	this.overlayElements.on(app.onTouch, function(e){
-		e.preventDefault();
-		// get data-ytp-index to overlay element
-		var yptIndex = $(this).attr('data-ytp-index');
-		
-		if($(this).hasClass('overlay__element--hide')){
-			if($playerManager.playerContainer.hasClass('on-play')){
-				$playerManager.ytPlayer.pauseVideo();
-				$playerManager.playerContainer.addClass('on-pause');
-				$playerManager.playerContainer.removeClass('on-play on-overlay');
-			}else{
-				$playerManager.ytPlayer.playVideo();
-				$playerManager.playerContainer.removeClass('on-pause on-overlay');
-				$playerManager.playerContainer.addClass('on-play');
-			}
-		}
-		else{
-        $playerManager.ytPlayer.playVideoAt(yptIndex);
-				$playerManager.playerContainer.removeClass('on-overlay on-pause');
-				$playerManager.playerContainer.addClass('on-play');
-		}
-	});
-	
-	// SKIP BTN (skip to prev / next video)
-	this.skipButton.on(app.onTouch, function (e){
-		e.preventDefault();
-		$playerManager.playerContainer.addClass('on-play');
-		
-		if($(this).hasClass('controls__btn--prev')){
-			
-			$playerManager.ytPlayer.previousVideo();
-		}
-		else{
-			$playerManager.ytPlayer.nextVideo();
-		}
-	});
-	
-	// VOLUME SLIDER 
-	this.volumeSlider.on('input', function (e){
-		e.preventDefault();
-		
-		// get the input value
-    var volume = $(this).val();
-		
-		// apply to video's volume
-		$playerManager.ytPlayer.setVolume(volume);
-		
-		if(volume == 0){
-			$playerManager.muteBtn.addClass('on-mute');
-		}else{
-			$playerManager.muteBtn.removeClass('on-mute');
-		}
-		
-	});
-	
-	this.muteBtn.on(app.onTouch, function (e){
-		e.preventDefault();
-		var isMute = $playerManager.ytPlayer.isMuted();
-		
-		
-		if( isMute == true){
-			$playerManager.ytPlayer.unMute();
-			$playerManager.muteBtn.removeClass('on-mute');
-		}else{
-			$playerManager.ytPlayer.mute();
-			$playerManager.muteBtn.addClass('on-mute');
-		}
-		
-	});
+function buildJSON(response, list, playlistID){ //Takes the text response and adds it to any existing JSON data
+  var results = JSON.parse(response); //Parse it
+  if(!list){ list = []; } //If there is no list to add to, make one
+  list.push.apply(list,results.items); //Add JSON data to the list
+  if(results.nextPageToken){ //If the results included a page token
+    getPlaylistData(playlistID, list, results.nextPageToken); //Create another data API request including the current list and page token
+  } else { //If there is not a next-page token
+    buildHTML(list); //Send the JSON data to buildHTML
+  }
 }
 
-// 6 - API called this function every time the player change his status
-
-PlayerManager.prototype.onPlayerStateChange = function() {
-	
-	/*
-	
-		YT PLAYER STATE
-		
-		-1 – unstarted
-		0 – ended
-		1 – playing
-		2 – paused
-		3 – buffering
-		5 – video cued
-		
-		PLAYER'S CONTAINER STATE
-		
-		- ON-PLAY
-		- ON_PAUSE
-		- ON-OVERLAY
-	
-	*/
-	
-	var $playerManager = this;
-	var isMute = $playerManager.ytPlayer.isMuted();
-	console.log('change '+ $playerManager.playerState);
-
-	$playerManager.playerState = $playerManager.ytPlayer.getPlayerState();
-	
-	if (
-			$playerManager.playerState == YT.PlayerState.UNSTARTED || 
-			$playerManager.playerState ==	YT.PlayerState.CUED || 
-			$playerManager.playerState == YT.PlayerState.PAUSED || 
-			$playerManager.playerState == YT.PlayerState.ENDED
-		) {
-		$playerManager.playerContainer.removeClass('on-play');
-		
-		// if you want show overlay when player is on-pause add class on-overlay here
-		$playerManager.playerContainer.addClass('on-pause');
-	}
-	else if($playerManager.playerState == YT.PlayerState.BUFFERING){
-		
-		// get the index of current video and apply now-playing class to overlay element 
-		var playlistIndex = $playerManager.ytPlayer.getPlaylistIndex();
-	 
-		for (var i = 0; i < $playerManager.ytpIndex.length; i++) {
-			if($playerManager.ytpIndex[i] == playlistIndex){
-				
-				this.carouselElements.removeClass('now-playing');
-				$("[data-ytp-index="+ $playerManager.ytpIndex[i] + "]").addClass('now-playing');
-			}
-		}
-		
-	}
-	else{
-		$playerManager.playerContainer.removeClass('on-pause');
-		$playerManager.playerContainer.addClass('on-play');
-	}
+function buildHTML(data){ //Turns JSON data into HTML elements
+  var list_data = ''; //A string container
+  for(i = 0; i < data.length; i++){ //Do this to each item in the JSON list
+    var item = data[i].snippet; //Each Youtube playlist item snippet
+    if(!item.thumbnails){continue;} //private videos do no reveal thumbs, so skip them
+    list_data += '<li data-ypt-index="'+ i +'"><p>' + item.title + '</p><span><img alt="'+ item.title +'" src="'+ item.thumbnails.medium.url +'"/></span></li>'; //create an element and add it to the list
+  }
+  ypt_thumbs.innerHTML = list_data; //After the for loop, insert that list of links into the html
 }
 
+function yptThumbHeight(){
+  ypt_thumbs.style.height = document.getElementById('player').clientHeight + 'px'; //change the height of the thumb list
+  //breaks if ypt_player.clientHeight + 'px';
+}
 
+function onPlayerReady(event) { //Once the player is ready...
+  yptThumbHeight(); //Set the thumb containter height
+}
 
-//DOM READY
-$(function() {
-	// 1. loading IFrame Player API code asynchronously.
-	var tag = document.createElement('script');
+getPlaylistData(playlistID);
 
-	tag.src = "https://www.youtube.com/iframe_api";
-	var firstScriptTag = document.getElementsByTagName('script')[0];
-	firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-});
+//Once the Youtube Iframe API is ready...
+window.onYouTubeIframeAPIReady = function() { // Creates an <iframe> (and YouTube player) after the API code downloads. must be globally available
+  player = new YT.Player('player', {
+    height: '360',
+    width: '640',
+    playerVars:
+    {
+      listType:'playlist',
+      list: playlistID
+    },
+    events: {
+      'onReady': onPlayerReady,
+      'onStateChange': onPlayerStateChange
+    }
+  });
+
+  // When the player does something...
+  function onPlayerStateChange(event) {
+
+    //Let's check on what video is playing
+    var currentIndex = player.getPlaylistIndex();
+    var the_thumbs = ypt_thumbs.getElementsByTagName('li');
+    var currentThumb = the_thumbs[currentIndex];
+
+    if (event.data == YT.PlayerState.PLAYING) { //A video is playing
+
+      for (var i = 0; i < the_thumbs.length; i++) { //Loop through the thumbs
+        the_thumbs[i].className = ""; //Remove nowplaying from each thumb
+      }
+
+      currentThumb.className = nowPlaying; //this will also erase any other class belonging to the li
+      //need to do a match looking for now playing
+    }
+
+    //if a video has finished, and the current index is the last video, and that thumb already has the nowplaying class
+    if (event.data == YT.PlayerState.ENDED && currentIndex == the_thumbs.length - 1 && the_thumbs[currentIndex].className == nowPlaying){
+      jQuery.event.trigger('playlistEnd'); //Trigger a global event
+    }
+  } //function onPlayerStateChange(event)
+
+  //When the user changes the window size...
+  window.addEventListener('resize', function(event){
+    yptThumbHeight(); //change the height of the thumblist
+  });
+
+  //When the user clicks an element with a playlist index...
+  jQuery(document).on('click','[data-ypt-index]:not(".ypt-now-playing")',function(e){ //click on a thumb that is not currently playing
+    ypt_index = Number(jQuery(this).attr('data-ypt-index')); //Get the ypt_index of the clicked item
+    if(navigator.userAgent.match(/(iPad|iPhone|iPod)/g)){ //if IOS
+      player.cuePlaylist({ //cue is required for IOS 7
+        listType: 'playlist',
+        list: playlistID,
+        index: ypt_index,
+        suggestedQuality: 'hd720' //quality is required for cue to work, for now
+        // https://code.google.com/p/gdata-issues/issues/detail?id=5411
+      }); //player.cuePlaylist
+    } else { //yay it's not IOS!
+    player.playVideoAt(ypt_index); //Play the new video, does not work for IOS 7
+  }
+  jQuery(nowPlayingClass).removeClass(nowPlaying); //Remove "now playing" from the thumb that is no longer playing
+  //When the new video starts playing, its thumb will get the now playing class
+}); //jQuery(document).on('click','#ypt_thumbs...
+};
 
   </script>
 </html>
